@@ -1,7 +1,7 @@
 const Attendance = require("../models/attendance.model");
 
 module.exports = {
-  // Regular check-in: between 10:15 and 10:30
+
   checkIn: async (req, res) => {
     try {
       const { employeeId } = req.body;
@@ -51,7 +51,6 @@ module.exports = {
     }
   },
 
-  // Half-day check-in: after 11:00 AM
   halfDayCheckIn: async (req, res) => {
     try {
       const { employeeId } = req.body;
@@ -96,7 +95,7 @@ module.exports = {
     }
   },
 
-  // Checkout (for full or half-day)
+
   checkOut: async (req, res) => {
     try {
       const { employeeId } = req.body;

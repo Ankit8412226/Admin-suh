@@ -12,9 +12,10 @@ const app = express();
 
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:5173", "https://emp-suh.vercel.app"],
   credentials: true,
 }));
+
 
 app.use(helmet());
 app.use(compression());
