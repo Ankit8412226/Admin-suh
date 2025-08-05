@@ -11,7 +11,9 @@ const connectDB = require("./config/db");
 const app = express();
 
 
-app.use(cors());
+app.use(cors({
+  origin: "*", // ✅ Allows all origins
+}));
 app.use(helmet());
 app.use(compression());
 app.use(express.json());
