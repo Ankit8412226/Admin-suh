@@ -63,8 +63,16 @@ const login = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
+const getAllEmployees = async (req, res) => {
+  try {
+    const employees = await Emp.find().select("-password"); // Exclude password field
+    res.status(200).json({ employees });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch employees", error: error.message });
+  }
+};
 module.exports = {
   register,
   login,
+  getAllEmployees ,
 };
