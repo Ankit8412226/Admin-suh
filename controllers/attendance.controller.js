@@ -1,7 +1,6 @@
 const Attendance = require("../models/attendance.model");
 
 module.exports = {
-
   checkIn: async (req, res) => {
     try {
       const { employeeId } = req.body;
@@ -10,13 +9,18 @@ module.exports = {
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
 
+      // Debug logging to see what time is being checked
+      console.log(`Current time: ${currentHour}:${currentMinute}`);
+      console.log(`Check condition: Hour=${currentHour}, Minute=${currentMinute}`);
+
+      // Fixed condition: Allow check-in between 10:15 and 10:30 AM (inclusive)
       if (
         currentHour !== 10 ||
         currentMinute < 15 ||
         currentMinute > 30
       ) {
         return res.status(400).json({
-          message: "Full-day check-in allowed only between 10:15 and 10:30 AM.",
+          message: `Full-day check-in allowed only between 10:15 and 10:30 AM. Current time: ${currentHour}:${currentMinute.toString().padStart(2, '0')}`,
         });
       }
 
@@ -58,9 +62,12 @@ module.exports = {
       const now = new Date();
       const currentHour = now.getHours();
 
+      // Debug logging
+      console.log(`Half-day check-in attempt at hour: ${currentHour}`);
+
       if (currentHour < 11) {
         return res.status(400).json({
-          message: "Half-day check-in allowed only after 11:00 AM.",
+          message: `Half-day check-in allowed only after 11:00 AM. Current time: ${currentHour}:${now.getMinutes().toString().padStart(2, '0')}`,
         });
       }
 
@@ -94,7 +101,6 @@ module.exports = {
       res.status(500).json({ message: "Internal server error" });
     }
   },
-
 
   checkOut: async (req, res) => {
     try {
