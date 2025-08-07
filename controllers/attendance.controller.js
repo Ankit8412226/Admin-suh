@@ -6,25 +6,6 @@ module.exports = {
       const { employeeId } = req.body;
 
       const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-
-      // Debug logging to see what time is being checked
-      console.log(`Current time: ${currentHour}:${currentMinute}`);
-      console.log(`Check condition: Hour=${currentHour}, Minute=${currentMinute}`);
-
-      // FIXED: Allow check-in between 10:15 and 10:30 AM (inclusive)
-      // The condition should reject if NOT in the allowed time window
-      if (
-        currentHour !== 10 ||
-        currentMinute < 15 ||
-        currentMinute > 30  // This is correct - we want to reject if minute is greater than 30
-      ) {
-        return res.status(400).json({
-          message: `Full-day check-in allowed only between 10:15 and 10:30 AM. Current time: ${currentHour}:${currentMinute.toString().padStart(2, '0')}`,
-        });
-      }
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -41,13 +22,13 @@ module.exports = {
         employee: employeeId,
         date: today,
         checkInTime: now,
-        status: "present",
+        status: "present", // default to full-day unless frontend says otherwise
       });
 
       await attendance.save();
 
       res.status(200).json({
-        message: "Full-day check-in successful",
+        message: "Check-in successful",
         data: attendance,
       });
     } catch (err) {
@@ -61,17 +42,6 @@ module.exports = {
       const { employeeId } = req.body;
 
       const now = new Date();
-      const currentHour = now.getHours();
-
-      // Debug logging
-      console.log(`Half-day check-in attempt at hour: ${currentHour}`);
-
-      if (currentHour < 11) {
-        return res.status(400).json({
-          message: `Half-day check-in allowed only after 11:00 AM. Current time: ${currentHour}:${now.getMinutes().toString().padStart(2, '0')}`,
-        });
-      }
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
