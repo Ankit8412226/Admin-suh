@@ -3,14 +3,21 @@ const Emp = require("../models/empSuh.model");
 
 const createTask = async (req, res) => {
   try {
-    const { title, description, assignedTo, dueDate } = req.body;
+    const { title, description, assignedTo, dueDate, priority } = req.body;
 
     const employee = await Emp.findById(assignedTo);
     if (!employee) {
       return res.status(404).json({ message: "Assigned employee not found" });
     }
 
-    const task = new Task({ title, description, assignedTo, dueDate });
+    const task = new Task({
+      title,
+      description,
+      assignedTo,
+      dueDate,
+      priority // ✅ now accepting priority
+    });
+
     await task.save();
 
     res.status(201).json({ message: "Task created successfully", task });
@@ -21,7 +28,13 @@ const createTask = async (req, res) => {
 
 const getAllTasks = async (req, res) => {
   try {
-    const tasks = await Task.find().populate("assignedTo", "name email");
+    const tasks = await Task.find()
+      .populate("assignedTo", "name email")
+      .sort({
+        priority: -1, // ✅ optional: show high priority first
+        dueDate: 1    // then by nearest due date
+      });
+
     res.status(200).json(tasks);
   } catch (error) {
     res.status(500).json({ message: "Error fetching tasks", error: error.message });
@@ -30,7 +43,8 @@ const getAllTasks = async (req, res) => {
 
 const getTaskById = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id).populate("assignedTo", "name email");
+    const task = await Task.findById(req.params.id)
+      .populate("assignedTo", "name email");
 
     if (!task) return res.status(404).json({ message: "Task not found" });
 
@@ -42,11 +56,11 @@ const getTaskById = async (req, res) => {
 
 const updateTask = async (req, res) => {
   try {
-    const { title, description, assignedTo, status, dueDate } = req.body;
+    const { title, description, assignedTo, status, dueDate, priority } = req.body;
 
     const updatedTask = await Task.findByIdAndUpdate(
       req.params.id,
-      { title, description, assignedTo, status, dueDate },
+      { title, description, assignedTo, status, dueDate, priority }, // ✅ priority added
       { new: true }
     ).populate("assignedTo", "name email");
 
@@ -68,6 +82,7 @@ const deleteTask = async (req, res) => {
     res.status(500).json({ message: "Error deleting task", error: error.message });
   }
 };
+
 const approveTask = async (req, res) => {
   try {
     const taskId = req.params.id;
@@ -90,12 +105,11 @@ const approveTask = async (req, res) => {
   }
 };
 
-
 module.exports = {
   createTask,
   getAllTasks,
   getTaskById,
   updateTask,
   deleteTask,
-  approveTask ,
+  approveTask,
 };
