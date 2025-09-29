@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const auth = require("../middleware/auth");
-const { authorize } = require("../middleware/auth");
+const { auth, authorize } = require("../middleware/auth");
+
 const attendanceController = require("../controllers/attendance.controller");
 
 // Public routes for employees

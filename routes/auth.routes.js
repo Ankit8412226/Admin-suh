@@ -8,8 +8,8 @@ const {
   changePassword,
   updateEmployeeRole
 } = require("../controllers/auth.controller");
-const auth = require("../middleware/auth");
-const authorize = require("../middleware/authorize");
+const { auth, authorize } = require("../middleware/auth");
+
 
 // Authentication routes
 router.post("/register", auth, authorize(["admin", "hr"]), register);

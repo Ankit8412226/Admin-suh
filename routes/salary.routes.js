@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
-const { authorize } = require('../middleware/auth');
+const { auth, authorize } = require("../middleware/auth");
+
 const salaryController = require('../controllers/salary.controller');
 
 // Create a new salary record - Admin/HR only

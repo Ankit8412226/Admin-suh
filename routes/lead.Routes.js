@@ -11,8 +11,8 @@ const {
   addActivity,
   getLeadStatistics
 } = require("../controllers/lead.controller");
-const auth = require("../middleware/auth");
-const authorize = require("../middleware/authorize");
+const { auth, authorize } = require("../middleware/auth");
+
 
 // Create and get all leads
 router.post("/", auth, authorize(["admin", "hr", "team-lead"]), createLead);
