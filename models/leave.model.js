@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const leaveSchema = new mongoose.Schema({
   employee: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "EmpSUH",
+    ref: "suh_employee",
     required: true,
   },
   startDate: {
@@ -23,6 +23,18 @@ const leaveSchema = new mongoose.Schema({
     enum: ["pending", "approved", "rejected"],
     default: "pending",
   },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "suh_employee",
+  },
+  leaveType: {
+    type: String,
+    enum: ["sick", "casual", "annual", "other"],
+    default: "casual"
+  },
+  comments: {
+    type: String
+  }
 }, { timestamps: true });
 
-module.exports = mongoose.model("Leave", leaveSchema);
+module.exports = mongoose.model("suh_leave", leaveSchema);

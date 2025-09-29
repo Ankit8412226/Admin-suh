@@ -2,20 +2,40 @@
 const express = require("express");
 const router = express.Router();
 const leaveController = require("../controllers/leave.controller");
-const { verifyToken, authorizeRoles } = require("../middleware/auth");
+const { auth, authorize } = require("../middleware/auth");
 
+// Apply for leave - Any authenticated employee
+router.post("/apply", auth, leaveController.applyLeave);
 
-router.post("/apply", verifyToken, leaveController.applyLeave);
+// Get all leaves - Admin/HR access
+router.get("/", auth, authorize("admin", "hr"), leaveController.getAllLeaves);
 
+// Get employee's own leaves
+router.get("/employee/:employeeId", auth, leaveController.getEmployeeLeaves);
 
-router.get("/", verifyToken, leaveController.getAllLeaves);
+// Get leave statistics - Admin/HR access
+router.get("/statistics", auth, authorize("admin", "hr"), leaveController.getLeaveStatistics);
 
-// Only Admin or Team Lead can update leave status
+// Update leave status - Admin/HR/Team Lead access
 router.put(
   "/status/:id",
-  verifyToken,
-  authorizeRoles("admin", "team-lead"),
+  auth,
+  authorize("admin", "hr", "team-lead"),
   leaveController.updateLeaveStatus
+);
+
+// Add comment to leave request
+router.post(
+  "/comment/:id",
+  auth,
+  leaveController.addComment
+);
+
+// Delete leave request - Admin/HR access or employee's own request
+router.delete(
+  "/:id",
+  auth,
+  leaveController.deleteLeave
 );
 
 module.exports = router;

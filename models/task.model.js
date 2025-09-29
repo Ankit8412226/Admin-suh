@@ -9,8 +9,13 @@ const taskSchema = new mongoose.Schema({
 
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "EmpSUH",
+    ref: "suh_employee",
     required: true,
+  },
+  
+  assignedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "suh_employee",
   },
 
   status: {
@@ -25,7 +30,21 @@ const taskSchema = new mongoose.Schema({
     default: "medium",
   },
 
-  dueDate: Date
+  dueDate: Date,
+  
+  completionDate: Date,
+  
+  comments: [{
+    text: String,
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "suh_employee"
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, { timestamps: true });
 
-module.exports = mongoose.model("Task", taskSchema);
+module.exports = mongoose.model("suh_task", taskSchema);
