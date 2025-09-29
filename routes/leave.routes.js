@@ -6,7 +6,7 @@ console.log(leaveController);
 const { auth, authorize } = require("../middleware/auth");
 
 // Apply for leave - Any authenticated employee
-router.post("/apply", auth, leaveController.applyLeave);
+router.post("/", auth, leaveController.applyLeave);
 
 // Get all leaves - Admin/HR access
 router.get("/", auth, authorize("admin", "hr"), leaveController.getAllLeaves);
@@ -19,7 +19,7 @@ router.get("/statistics", auth, authorize("admin", "hr"), leaveController.getLea
 
 // Update leave status - Admin/HR/Team Lead access
 router.put(
-  "/status/:id",
+  "/:id/status",
   auth,
   authorize("admin", "hr", "team-lead"),
   leaveController.updateLeaveStatus

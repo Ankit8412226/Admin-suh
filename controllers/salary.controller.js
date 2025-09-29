@@ -1,5 +1,6 @@
 const Salary = require('../models/salary.model');
 const Employee = require('../models/empSuh.model');
+const Attendance = require('../models/attendance.model');
 
 // Create a new salary record
 exports.createSalary = async (req, res) => {
@@ -44,16 +45,16 @@ exports.createSalary = async (req, res) => {
     }
 
     // Calculate totals
-    const totalEarnings = Number(basic || 0) + 
-                         Number(hra || 0) + 
-                         Number(conveyanceAllowance || 0) + 
-                         Number(medicalAllowance || 0) + 
+    const totalEarnings = Number(basic || 0) +
+                         Number(hra || 0) +
+                         Number(conveyanceAllowance || 0) +
+                         Number(medicalAllowance || 0) +
                          Number(specialAllowance || 0);
-                         
-    const totalDeductions = Number(professionalTax || 0) + 
-                           Number(tds || 0) + 
+
+    const totalDeductions = Number(professionalTax || 0) +
+                           Number(tds || 0) +
                            Number(otherDeductions || 0);
-                           
+
     const netSalary = totalEarnings - totalDeductions;
 
     // Create new salary record
@@ -194,16 +195,16 @@ exports.updateSalary = async (req, res) => {
     }
 
     // Calculate totals
-    const totalEarnings = Number(basic || salary.basic || 0) + 
-                         Number(hra || salary.hra || 0) + 
-                         Number(conveyanceAllowance || salary.conveyanceAllowance || 0) + 
-                         Number(medicalAllowance || salary.medicalAllowance || 0) + 
+    const totalEarnings = Number(basic || salary.basic || 0) +
+                         Number(hra || salary.hra || 0) +
+                         Number(conveyanceAllowance || salary.conveyanceAllowance || 0) +
+                         Number(medicalAllowance || salary.medicalAllowance || 0) +
                          Number(specialAllowance || salary.specialAllowance || 0);
-                         
-    const totalDeductions = Number(professionalTax || salary.professionalTax || 0) + 
-                           Number(tds || salary.tds || 0) + 
+
+    const totalDeductions = Number(professionalTax || salary.professionalTax || 0) +
+                           Number(tds || salary.tds || 0) +
                            Number(otherDeductions || salary.otherDeductions || 0);
-                           
+
     const netSalary = totalEarnings - totalDeductions;
 
     // Update salary record
@@ -274,21 +275,21 @@ exports.deleteSalary = async (req, res) => {
 exports.generateSalaryReport = async (req, res) => {
   try {
     const { month, year } = req.query;
-    
+
     let query = {};
-    
+
     if (month) query.month = month;
     if (year) query.year = year;
-    
+
     const salaries = await Salary.find(query)
       .populate('employee', 'name email employeeId designation department')
       .sort({ employee: 1 });
-      
+
     // Calculate summary statistics
     const totalSalaryPaid = salaries.reduce((sum, salary) => sum + (salary.status === 'paid' ? salary.netSalary : 0), 0);
     const totalSalaryPending = salaries.reduce((sum, salary) => sum + (salary.status === 'pending' ? salary.netSalary : 0), 0);
     const totalEmployees = new Set(salaries.map(s => s.employee._id.toString())).size;
-    
+
     res.status(200).json({
       success: true,
       count: salaries.length,
@@ -304,6 +305,77 @@ exports.generateSalaryReport = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error generating salary report',
+      error: error.message
+    });
+  }
+};
+
+// Compute salary suggestion from attendance for a month
+exports.computeFromAttendance = async (req, res) => {
+  try {
+    const { employee, month, year, basic } = req.body;
+
+    if (!employee || !month || !year || !basic) {
+      return res.status(400).json({
+        success: false,
+        message: 'employee, month, year and basic are required'
+      });
+    }
+
+    const emp = await Employee.findById(employee);
+    if (!emp) {
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    const attendanceRecords = await Attendance.find({
+      employee,
+      date: { $gte: startDate, $lte: endDate }
+    });
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const presentDays = attendanceRecords.filter(r => r.status === 'present').length;
+    const halfDays = attendanceRecords.filter(r => r.status === 'half-day').length;
+    const leaveDays = attendanceRecords.filter(r => r.status === 'on-leave').length;
+    const absentDays = attendanceRecords.filter(r => r.status === 'absent').length;
+
+    const paidUnits = presentDays + leaveDays + (halfDays * 0.5);
+    const perDayRate = Number(basic) / daysInMonth;
+    const computedBasic = Math.round(perDayRate * paidUnits);
+
+    const totals = {
+      totalWorkingDays: daysInMonth,
+      presentDays,
+      halfDays,
+      leaveDays,
+      absentDays,
+      paidUnits
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: 'Computed salary from attendance',
+      data: {
+        employee: {
+          id: emp._id,
+          name: emp.name,
+          employeeId: emp.employeeId,
+          designation: emp.designation,
+          department: emp.department
+        },
+        month,
+        year,
+        perDayRate,
+        computedBasic,
+        totals
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Error computing salary from attendance',
       error: error.message
     });
   }

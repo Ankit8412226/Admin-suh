@@ -41,6 +41,15 @@ const empSuhSchema = new mongoose.Schema({
     enum: ["Available", "Not Available", "On Leave"],
     default: "Available",
   },
+  lastActiveAt: {
+    type: Date,
+  },
+  lastCheckInAt: {
+    type: Date,
+  },
+  lastCheckOutAt: {
+    type: Date,
+  },
   leaveCount: {
     type: Number,
     default: 0,

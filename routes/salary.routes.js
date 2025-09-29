@@ -25,4 +25,7 @@ router.delete('/:id', auth, authorize('admin', 'hr'), salaryController.deleteSal
 // Generate salary report - Admin/HR only
 router.get('/report/generate', auth, authorize('admin', 'hr'), salaryController.generateSalaryReport);
 
+// Compute salary from attendance - Admin/HR only
+router.post('/compute', auth, authorize('admin', 'hr'), salaryController.computeFromAttendance);
+
 module.exports = router;

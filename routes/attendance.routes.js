@@ -5,6 +5,7 @@ const { auth, authorize } = require("../middleware/auth");
 const attendanceController = require("../controllers/attendance.controller");
 
 // Public routes for employees
+router.post("/", auth, attendanceController.markAttendance);
 router.post("/checkin", auth, attendanceController.checkIn);
 router.post("/halfday-checkin", auth, attendanceController.halfDayCheckIn);
 router.post("/checkout", auth, attendanceController.checkOut);

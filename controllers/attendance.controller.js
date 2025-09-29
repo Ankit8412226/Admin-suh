@@ -3,6 +3,23 @@ const Employee = require("../models/empSuh.model");
 const mongoose = require("mongoose");
 
 module.exports = {
+  // Unified mark attendance endpoint to align with frontend POST /attendance
+  markAttendance: async (req, res) => {
+    try {
+      const { employeeId, attendanceType, notes } = req.body;
+      // attendanceType: 'full' | 'half'
+      if (attendanceType === 'half') {
+        req.body = { employeeId, notes: notes || "Half day" };
+        return await module.exports.halfDayCheckIn(req, res);
+      }
+      // default full day
+      req.body = { employeeId, notes };
+      return await module.exports.checkIn(req, res);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: "Internal server error", error: err.message });
+    }
+  },
   checkIn: async (req, res) => {
     try {
       const { employeeId } = req.body;
@@ -17,9 +34,9 @@ module.exports = {
       });
 
       if (existing) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          message: "Already checked in today." 
+          message: "Already checked in today."
         });
       }
 
@@ -33,8 +50,12 @@ module.exports = {
 
       await attendance.save();
 
-      // Update employee status to Available
-      await Employee.findByIdAndUpdate(employeeId, { status: "Available" });
+      // Update employee status and presence timestamps
+      await Employee.findByIdAndUpdate(employeeId, {
+        status: "Available",
+        lastActiveAt: new Date(),
+        lastCheckInAt: now
+      });
 
       res.status(200).json({
         success: true,
@@ -43,7 +64,7 @@ module.exports = {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Internal server error",
         error: err.message
@@ -65,9 +86,9 @@ module.exports = {
       });
 
       if (existing) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          message: "Already checked in today." 
+          message: "Already checked in today."
         });
       }
 
@@ -81,8 +102,12 @@ module.exports = {
 
       await attendance.save();
 
-      // Update employee status to Available
-      await Employee.findByIdAndUpdate(employeeId, { status: "Available" });
+      // Update employee status and presence timestamps
+      await Employee.findByIdAndUpdate(employeeId, {
+        status: "Available",
+        lastActiveAt: new Date(),
+        lastCheckInAt: now
+      });
 
       res.status(200).json({
         success: true,
@@ -91,7 +116,7 @@ module.exports = {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Internal server error",
         error: err.message
@@ -112,16 +137,16 @@ module.exports = {
       });
 
       if (!attendance) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          message: "Attendance not found." 
+          message: "Attendance not found."
         });
       }
 
       if (attendance.checkOutTime) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          message: "Already checked out." 
+          message: "Already checked out."
         });
       }
 
@@ -130,7 +155,11 @@ module.exports = {
       await attendance.save();
 
       // Update employee status to Not Available after checkout
-      await Employee.findByIdAndUpdate(employeeId, { status: "Not Available" });
+      await Employee.findByIdAndUpdate(employeeId, {
+        status: "Not Available",
+        lastActiveAt: new Date(),
+        lastCheckOutAt: attendance.checkOutTime
+      });
 
       res.status(200).json({
         success: true,
@@ -139,7 +168,7 @@ module.exports = {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Internal server error",
         error: err.message
@@ -173,7 +202,7 @@ module.exports = {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Error fetching attendance records",
         error: err.message
@@ -185,9 +214,9 @@ module.exports = {
   getAllAttendance: async (req, res) => {
     try {
       const { page = 1, limit = 10, startDate, endDate, status } = req.query;
-      
+
       let query = {};
-      
+
       // Date range filter
       if (startDate && endDate) {
         query.date = {
@@ -195,12 +224,12 @@ module.exports = {
           $lte: new Date(endDate)
         };
       }
-      
+
       // Status filter
       if (status) {
         query.status = status;
       }
-      
+
       const options = {
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),
@@ -210,15 +239,15 @@ module.exports = {
           select: 'name email employeeId department designation'
         }
       };
-      
+
       const attendance = await Attendance.find(query)
         .skip((page - 1) * limit)
         .limit(limit)
         .sort({ date: -1 })
         .populate('employee', 'name email employeeId department designation');
-      
+
       const total = await Attendance.countDocuments(query);
-      
+
       res.status(200).json({
         success: true,
         count: attendance.length,
@@ -228,7 +257,7 @@ module.exports = {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Error fetching attendance records",
         error: err.message
@@ -240,31 +269,31 @@ module.exports = {
   markAbsent: async (req, res) => {
     try {
       const { employeeId, date, reason } = req.body;
-      
+
       const absentDate = date ? new Date(date) : new Date();
       absentDate.setHours(0, 0, 0, 0);
-      
+
       const existing = await Attendance.findOne({
         employee: employeeId,
         date: absentDate
       });
-      
+
       if (existing) {
         return res.status(400).json({
           success: false,
           message: "Attendance record already exists for this date"
         });
       }
-      
+
       const attendance = new Attendance({
         employee: employeeId,
         date: absentDate,
         status: "absent",
         notes: reason || "Marked absent"
       });
-      
+
       await attendance.save();
-      
+
       res.status(200).json({
         success: true,
         message: "Employee marked as absent",
@@ -285,23 +314,23 @@ module.exports = {
     try {
       const { id } = req.params;
       const { status, checkInTime, checkOutTime, notes } = req.body;
-      
+
       const attendance = await Attendance.findById(id);
-      
+
       if (!attendance) {
         return res.status(404).json({
           success: false,
           message: "Attendance record not found"
         });
       }
-      
+
       if (status) attendance.status = status;
       if (checkInTime) attendance.checkInTime = new Date(checkInTime);
       if (checkOutTime) attendance.checkOutTime = new Date(checkOutTime);
       if (notes) attendance.notes = notes;
-      
+
       await attendance.save();
-      
+
       res.status(200).json({
         success: true,
         message: "Attendance record updated successfully",
@@ -321,16 +350,16 @@ module.exports = {
   deleteAttendance: async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       const attendance = await Attendance.findByIdAndDelete(id);
-      
+
       if (!attendance) {
         return res.status(404).json({
           success: false,
           message: "Attendance record not found"
         });
       }
-      
+
       res.status(200).json({
         success: true,
         message: "Attendance record deleted successfully"
@@ -349,44 +378,44 @@ module.exports = {
   generateAttendanceReport: async (req, res) => {
     try {
       const { month, year, department } = req.query;
-      
+
       if (!month || !year) {
         return res.status(400).json({
           success: false,
           message: "Month and year are required for generating report"
         });
       }
-      
+
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0);
-      
+
       let employeeQuery = {};
       if (department) {
         employeeQuery.department = department;
       }
-      
+
       // Get all employees
       const employees = await Employee.find(employeeQuery).select('_id name employeeId department designation');
-      
+
       // Get attendance for the month
       const attendanceRecords = await Attendance.find({
         date: { $gte: startDate, $lte: endDate }
       });
-      
+
       // Calculate statistics for each employee
       const report = employees.map(employee => {
         const employeeAttendance = attendanceRecords.filter(
           record => record.employee.toString() === employee._id.toString()
         );
-        
+
         const presentDays = employeeAttendance.filter(record => record.status === 'present').length;
         const halfDays = employeeAttendance.filter(record => record.status === 'half-day').length;
         const absentDays = employeeAttendance.filter(record => record.status === 'absent').length;
         const leaveDays = employeeAttendance.filter(record => record.status === 'on-leave').length;
-        
+
         // Calculate working days in the month
         const daysInMonth = new Date(year, month, 0).getDate();
-        
+
         return {
           employee: {
             _id: employee._id,
@@ -405,7 +434,7 @@ module.exports = {
           }
         };
       });
-      
+
       res.status(200).json({
         success: true,
         month,

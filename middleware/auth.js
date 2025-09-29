@@ -27,6 +27,11 @@ const auth = async (req, res, next) => {
 // Middleware to check user roles
 const authorize = (...roles) => {
   return (req, res, next) => {
+    // Always allow admin to access any resource
+    if (req.user.role === 'admin') {
+      return next();
+    }
+    
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,

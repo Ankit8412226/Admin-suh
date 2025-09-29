@@ -18,8 +18,9 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "Email already in use" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
+    const plainPassword = password || Math.random().toString(36).slice(-10);
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
     // Generate employee ID
     const empCount = await Emp.countDocuments();
     const employeeId = `SUH${(empCount + 1).toString().padStart(4, '0')}`;
@@ -38,7 +39,7 @@ const register = async (req, res) => {
 
     await newEmp.save();
 
-    // Send welcome email to the new employee
+    // Send welcome email to the new employee with credentials
     try {
       await sendWelcomeEmail({
         name: newEmp.name,
@@ -46,14 +47,16 @@ const register = async (req, res) => {
         position: newEmp.designation,
         startDate: newEmp.joiningDate,
         employeeId: newEmp.employeeId,
-        department: newEmp.department
+        department: newEmp.department,
+        loginEmail: newEmp.email,
+        tempPassword: plainPassword
       });
     } catch (emailError) {
       console.error("Failed to send welcome email:", emailError);
       // Continue with the response even if email fails
     }
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: "Employee registered successfully",
       employee: {
         id: newEmp._id,
@@ -132,7 +135,7 @@ const getEmployeeById = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const { name, email, mobileNumber, designation, department, status } = req.body;
-    
+
     // Check if email is being changed and if it's already in use
     if (email) {
       const existingEmp = await Emp.findOne({ email, _id: { $ne: req.params.id } });
@@ -140,7 +143,7 @@ const updateProfile = async (req, res) => {
         return res.status(400).json({ message: "Email already in use by another employee" });
       }
     }
-    
+
     const updateData = {
       name,
       email,
@@ -149,7 +152,7 @@ const updateProfile = async (req, res) => {
       department,
       status
     };
-    
+
     // Handle profile image if uploaded
     if (req.file) {
       // Delete old profile image if exists
@@ -160,22 +163,22 @@ const updateProfile = async (req, res) => {
           fs.unlinkSync(oldImagePath);
         }
       }
-      
+
       // Set new profile image path
       updateData.profileImage = '/uploads/' + req.file.filename;
     }
-    
+
     const updatedEmployee = await Emp.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true }
     ).select("-password");
-    
+
     if (!updatedEmployee) {
       return res.status(404).json({ message: "Employee not found" });
     }
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       message: "Profile updated successfully",
       employee: updatedEmployee
     });
@@ -187,22 +190,22 @@ const updateProfile = async (req, res) => {
 const updateEmployeeStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    
+
     if (!["Available", "Not Available", "On Leave"].includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
     }
-    
+
     const updatedEmployee = await Emp.findByIdAndUpdate(
       req.params.id,
       { status },
       { new: true }
     ).select("-password");
-    
+
     if (!updatedEmployee) {
       return res.status(404).json({ message: "Employee not found" });
     }
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       message: "Status updated successfully",
       employee: updatedEmployee
     });
@@ -214,22 +217,22 @@ const updateEmployeeStatus = async (req, res) => {
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    
+
     const employee = await Emp.findById(req.params.id);
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
-    
+
     const isMatch = await bcrypt.compare(currentPassword, employee.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Current password is incorrect" });
     }
-    
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
+
     employee.password = hashedPassword;
     await employee.save();
-    
+
     res.status(200).json({ message: "Password changed successfully" });
   } catch (error) {
     res.status(500).json({ message: "Failed to change password", error: error.message });
@@ -239,11 +242,11 @@ const changePassword = async (req, res) => {
 const deleteEmployee = async (req, res) => {
   try {
     const employee = await Emp.findById(req.params.id);
-    
+
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
-    
+
     // Delete profile image if exists
     if (employee.profileImage) {
       const imagePath = path.join(__dirname, '..', employee.profileImage);
@@ -251,15 +254,15 @@ const deleteEmployee = async (req, res) => {
         fs.unlinkSync(imagePath);
       }
     }
-    
+
     await Emp.findByIdAndDelete(req.params.id);
-    
+
     // Delete related data (optional, can be modified based on requirements)
     await Attendance.deleteMany({ employee: req.params.id });
     await Leave.deleteMany({ employee: req.params.id });
     await Task.updateMany({ assignedTo: req.params.id }, { assignedTo: null });
     await Lead.updateMany({ assignedTo: req.params.id }, { assignedTo: null });
-    
+
     res.status(200).json({ message: "Employee deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete employee", error: error.message });
@@ -291,31 +294,33 @@ const getDashboardData = async (req, res) => {
     const totalEmployees = await Emp.countDocuments();
     const activeEmployees = await Emp.countDocuments({ status: "Available" });
     const onLeaveEmployees = await Emp.countDocuments({ status: "On Leave" });
-    
+
     // Attendance stats
     const todayAttendance = await Attendance.countDocuments({
       date: { $gte: today, $lt: tomorrow },
       status: "present"
     });
-    
+
     const attendanceRate = totalEmployees > 0 ? (todayAttendance / totalEmployees) * 100 : 0;
-    
+
     // Task stats
     const totalTasks = await Task.countDocuments();
     const completedTasks = await Task.countDocuments({ status: "completed" });
     const pendingTasks = await Task.countDocuments({ status: { $ne: "completed" } });
     const taskCompletionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-    
+
     // Lead stats
     const totalLeads = await Lead.countDocuments();
     const newLeads = await Lead.countDocuments({ status: "new" });
     const convertedLeads = await Lead.countDocuments({ status: "converted" });
     const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
-    
+
     // Leave stats
     const pendingLeaves = await Leave.countDocuments({ status: "pending" });
-    
+
     res.status(200).json({
+      success: true,
+      data: {
       employeeStats: {
         total: totalEmployees,
         active: activeEmployees,
@@ -340,6 +345,8 @@ const getDashboardData = async (req, res) => {
       },
       leaveStats: {
         pending: pendingLeaves
+      },
+      lastUpdated: new Date()
       }
     });
   } catch (error) {
