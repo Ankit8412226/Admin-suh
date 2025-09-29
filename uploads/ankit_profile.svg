@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#gradient)" />
+  <circle cx="100" cy="70" r="40" fill="#FFFFFF" />
+  <path d="M100 120 C 60 120, 40 160, 40 200 L 160 200 C 160 160, 140 120, 100 120 Z" fill="#FFFFFF" />
+  <text x="100" y="190" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="#4F46E5">Ankit Kumar</text>
+  <text x="100" y="170" font-family="Arial" font-size="12" text-anchor="middle" fill="#4F46E5">CTO</text>
+</svg>

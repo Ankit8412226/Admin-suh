@@ -7,6 +7,7 @@ const Task = require("../models/task.model");
 const Lead = require("../models/lead.model");
 const path = require("path");
 const fs = require("fs");
+const { sendWelcomeEmail } = require("../services/email");
 
 const register = async (req, res) => {
   try {
@@ -36,6 +37,21 @@ const register = async (req, res) => {
     });
 
     await newEmp.save();
+
+    // Send welcome email to the new employee
+    try {
+      await sendWelcomeEmail({
+        name: newEmp.name,
+        email: newEmp.email,
+        position: newEmp.designation,
+        startDate: newEmp.joiningDate,
+        employeeId: newEmp.employeeId,
+        department: newEmp.department
+      });
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError);
+      // Continue with the response even if email fails
+    }
 
     res.status(201).json({ 
       message: "Employee registered successfully",
